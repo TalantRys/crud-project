@@ -40,7 +40,31 @@ export default function OrdersProductsPage() {
       if (ordersResult.error) throw ordersResult.error;
       if (productsResult.error) throw productsResult.error;
 
-      setOrderProducts(orderProductsResult.data || []);
+      // Normalize relation fields: Supabase returns related rows under
+      // the relation table names (`orders`, `products`). Map them to
+      // `order` and `product` (single objects) and normalize nested
+      // `buyers` to a single object as well for easier rendering.
+      const rawOrderProducts = orderProductsResult.data || [];
+      const mappedOrderProducts: OrderProductWithDetails[] = rawOrderProducts.map(
+        (op: any) => {
+          const orderRaw = op.orders;
+          const productRaw = op.products;
+
+          let orderMapped: any = undefined;
+          if (orderRaw) {
+            orderMapped = Array.isArray(orderRaw) ? orderRaw[0] : orderRaw;
+            if (orderMapped && Array.isArray(orderMapped.buyers)) {
+              orderMapped.buyers = orderMapped.buyers[0];
+            }
+          }
+
+          const productMapped = productRaw ? (Array.isArray(productRaw) ? productRaw[0] : productRaw) : undefined;
+
+          return { ...op, order: orderMapped, product: productMapped };
+        }
+      );
+
+      setOrderProducts(mappedOrderProducts);
       setOrders(ordersResult.data || []);
       setProducts(productsResult.data || []);
     } catch (error) {
@@ -105,13 +129,13 @@ export default function OrdersProductsPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Связи заказов и товаров</h1>
-        {/* <button
+        <button
           onClick={() => openModal()}
           className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Plus className="w-5 h-5 mr-2" />
           Добавить связь
-        </button> */}
+        </button>
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
